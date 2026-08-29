@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Habit Tracker</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="theme-color" content="#3c3489" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Habits" />
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --card: #ffffff;
+    --border: #e4e1da;
+    --text: #23221f;
+    --text-secondary: #6b6960;
+    --accent: #3c3489;
+    --accent-light: #eeedfe;
+    --success: #0f6e56;
+    --success-light: #e1f5ee;
+    --danger: #99361c;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: max(24px, env(safe-area-inset-top)) 16px calc(80px + env(safe-area-inset-bottom));
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 20px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .install-note {
+    font-size: 12px;
+    color: var(--text-secondary);
+    background: var(--accent-light);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+    display: none;
+  }
+  .install-note.show { display: block; }
+
+  .stats-row { display: flex; gap: 12px; margin-bottom: 16px; }
+  .stat {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .stat .num { font-size: 22px; font-weight: 600; }
+  .stat .label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+  .add-row { display: flex; gap: 8px; margin-bottom: 4px; }
+  .add-row input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 16px;
+    background: var(--card);
+    color: var(--text);
+  }
+  .add-row button, .btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .add-row button:hover, .btn:hover { opacity: 0.9; }
+
+  .habit { padding: 14px 4px; border-bottom: 1px solid var(--border); }
+  .habit:last-child { border-bottom: none; }
+  .habit-top { display: flex; align-items: center; justify-content: space-between; }
+  .habit-left { display: flex; align-items: center; gap: 12px; }
+  .checkbox {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+    background: var(--card);
+  }
+  .checkbox.done { background: var(--success); border-color: var(--success); color: white; }
+  .habit-name { font-size: 15px; font-weight: 500; }
+  .habit-streak { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .habit-right { display: flex; align-items: center; gap: 6px; }
+  .icon-btn { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 13px; padding: 4px 6px; }
+  .icon-btn:hover { color: var(--text); }
+  .icon-btn.danger:hover { color: var(--danger); }
+
+  .note-box { margin-top: 10px; padding-left: 38px; }
+  .note-box textarea {
+    width: 100%; min-height: 50px; font-size: 13px; padding: 8px 10px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    font-family: inherit; resize: vertical; background: var(--bg); color: var(--text);
+  }
+
+  .empty { text-align: center; color: var(--text-secondary); padding: 32px 16px; font-size: 14px; }
+
+  .week-grid { display: grid; grid-template-columns: 1fr repeat(7, 32px); gap: 6px; align-items: center; font-size: 12px; }
+  .week-grid .head { color: var(--text-secondary); text-align: center; font-weight: 500; }
+  .week-grid .hname { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
+  .dot { width: 22px; height: 22px; border-radius: 50%; margin: 0 auto; background: var(--border); }
+  .dot.on { background: var(--success); }
+  .dot.today { box-shadow: 0 0 0 2px var(--accent); }
+
+  h2 { font-size: 15px; font-weight: 600; margin: 0 0 14px; }
+  .section-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .status { font-size: 12px; color: var(--text-secondary); margin-top: 8px; text-align: center; }
+
+  .month-header { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+  .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .month-grid .dow { font-size: 11px; color: var(--text-secondary); text-align: center; padding-bottom: 4px; }
+  .cell { aspect-ratio: 1; border-radius: 6px; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-secondary); }
+  .cell.blank { background: transparent; }
+  .cell.future { background: transparent; border: 1px dashed var(--border); color: var(--text-secondary); }
+  .cell.l0 { background: var(--border); color: var(--text-secondary); }
+  .cell.l1 { background: #cececc; color: var(--text-secondary); }
+  .cell.l2 { background: #9fe1cb; color: #085041; }
+  .cell.l3 { background: #5dcaa5; color: #04342c; }
+  .cell.l4 { background: #0f6e56; color: white; }
+  .cell.today-cell { box-shadow: 0 0 0 2px var(--accent); }
+  .legend { display: flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 11px; color: var(--text-secondary); }
+  .legend .cell { width: 14px; height: 14px; aspect-ratio: unset; font-size: 0; }
+
+  .reminder-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .reminder-controls { display: flex; align-items: center; gap: 10px; }
+  .switch { width: 40px; height: 22px; border-radius: 999px; background: var(--border); position: relative; cursor: pointer; flex-shrink: 0; }
+  .switch.on { background: var(--success); }
+  .switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: white; transition: transform 0.15s; }
+  .switch.on::after { transform: translateX(18px); }
+  .reminder-time { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 16px; background: var(--card); color: var(--text); }
+  .reminder-hint { font-size: 12px; color: var(--text-secondary); margin-top: 10px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Habit tracker</h1>
+
+  <div class="install-note" id="installNote"></div>
+
+  <div class="stats-row" id="statsRow"></div>
+
+  <div class="card">
+    <h2>Add a habit</h2>
+    <div class="add-row">
+      <input id="newHabitInput" type="text" placeholder="Habit name" maxlength="60" />
+      <button id="addBtn">Add</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title"><h2>Today</h2></div>
+    <div id="todayList"></div>
+  </div>
+
+  <div class="card">
+    <h2>This week</h2>
+    <div id="weekGrid"></div>
+  </div>
+
+  <div class="card">
+    <h2 id="monthTitle">This month</h2>
+    <div id="monthGrid"></div>
+  </div>
+
+  <div class="card">
+    <h2>Daily reminder</h2>
+    <div class="reminder-row">
+      <div class="reminder-controls">
+        <div class="switch" id="reminderSwitch"></div>
+        <input type="time" class="reminder-time" id="reminderTime" value="20:00" />
+      </div>
+    </div>
+    <div class="reminder-hint" id="reminderHint">Off. Turning this on will ask your browser for notification permission — reminders only fire while this tab or app is open.</div>
+  </div>
+
+  <div class="status" id="statusMsg"></div>
+</div>
+
+<script>
+const STORAGE_KEY = 'habits-data';
+let state = {
+  habits: [],
+  logs: {},
+  notes: {},
+  reminder: { enabled: false, time: '20:00', lastFired: null }
+};
+let reminderCheckInterval = null;
+
+function todayStr(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
+function uid() {
+  return 'h_' + Math.random().toString(36).slice(2, 10);
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const loaded = JSON.parse(raw);
+      state.habits = loaded.habits || [];
+      state.logs = loaded.logs || {};
+      state.notes = loaded.notes || {};
+      state.reminder = loaded.reminder || { enabled: false, time: '20:00', lastFired: null };
+    }
+  } catch (e) {
+    console.log('No existing data yet, starting fresh.');
+  }
+  render();
+  setupReminder();
+  checkInstallState();
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    setStatus('Saved');
+  } catch (e) {
+    console.error('Storage error', e);
+    setStatus('Could not save — your browser storage may be full or blocked.');
+  }
+}
+
+function setStatus(msg) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  if (msg === 'Saved') {
+    setTimeout(() => { if (el.textContent === 'Saved') el.textContent = ''; }, 1200);
+  }
+}
+
+function checkInstallState() {
+  const note = document.getElementById('installNote');
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (!isStandalone) {
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    note.classList.add('show');
+    note.textContent = isIOS
+      ? 'Not installed yet: tap the Share icon, then "Add to Home Screen" to use this as an app.'
+      : 'Not installed yet: open your browser menu and choose "Add to Home Screen" or "Install app" to use this as an app.';
+  }
+}
+
+function calcStreak(habitId) {
+  let streak = 0;
+  let offset = 0;
+  if (!state.logs[habitId + ':' + todayStr(0)]) offset = -1;
+  while (state.logs[habitId + ':' + todayStr(offset)]) { streak++; offset--; }
+  return streak;
+}
+
+function addHabit() {
+  const input = document.getElementById('newHabitInput');
+  const name = input.value.trim();
+  if (!name) {
+    input.placeholder = 'Enter a habit name first';
+    input.style.borderColor = 'var(--danger)';
+    setTimeout(() => { input.style.borderColor = ''; input.placeholder = 'Habit name'; }, 1500);
+    return;
+  }
+  state.habits.push({ id: uid(), name, createdAt: todayStr() });
+  input.value = '';
+  saveState();
+  render();
+}
+
+function toggleToday(habitId) {
+  const key = habitId + ':' + todayStr(0);
+  if (state.logs[key]) delete state.logs[key];
+  else state.logs[key] = true;
+  saveState();
+  render();
+}
+
+function deleteHabit(habitId) {
+  state.habits = state.habits.filter(h => h.id !== habitId);
+  Object.keys(state.logs).forEach(k => { if (k.startsWith(habitId + ':')) delete state.logs[k]; });
+  Object.keys(state.notes).forEach(k => { if (k.startsWith(habitId + ':')) delete state.notes[k]; });
+  saveState();
+  render();
+}
+
+function toggleNoteBox(habitId) {
+  const box = document.getElementById('note-' + habitId);
+  if (!box) return;
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  if (box.style.display === 'block') box.querySelector('textarea').focus();
+}
+
+function saveNote(habitId, value) {
+  const key = habitId + ':' + todayStr(0);
+  if (value.trim()) state.notes[key] = value.trim();
+  else delete state.notes[key];
+  saveState();
+}
+
+function render() {
+  renderStats();
+  renderToday();
+  renderWeek();
+  renderMonth();
+}
+
+function renderStats() {
+  const total = state.habits.length;
+  const doneToday = state.habits.filter(h => state.logs[h.id + ':' + todayStr(0)]).length;
+  const bestStreak = state.habits.reduce((max, h) => Math.max(max, calcStreak(h.id)), 0);
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat"><div class="num">${doneToday}/${total}</div><div class="label">Done today</div></div>
+    <div class="stat"><div class="num">${bestStreak}</div><div class="label">Best streak</div></div>
+  `;
+}
+
+function renderToday() {
+  const list = document.getElementById('todayList');
+  if (state.habits.length === 0) {
+    list.innerHTML = `<div class="empty">Empty for now. Add your first habit above.</div>`;
+    return;
+  }
+  list.innerHTML = state.habits.map(h => {
+    const done = !!state.logs[h.id + ':' + todayStr(0)];
+    const streak = calcStreak(h.id);
+    const noteKey = h.id + ':' + todayStr(0);
+    const existingNote = state.notes[noteKey] || '';
+    return `
+      <div class="habit">
+        <div class="habit-top">
+          <div class="habit-left">
+            <div class="checkbox ${done ? 'done' : ''}" onclick="toggleToday('${h.id}')">${done ? '✓' : ''}</div>
+            <div>
+              <div class="habit-name">${escapeHtml(h.name)}</div>
+              <div class="habit-streak">${streak > 0 ? streak + '-day streak' : 'No streak yet'}</div>
+            </div>
+          </div>
+          <div class="habit-right">
+            <button class="icon-btn" onclick="toggleNoteBox('${h.id}')">${existingNote ? 'Edit note' : 'Add note'}</button>
+            <button class="icon-btn danger" onclick="deleteHabit('${h.id}')">Remove</button>
+          </div>
+        </div>
+        <div class="note-box" id="note-${h.id}" style="display:none;">
+          <textarea placeholder="Why'd today go the way it did?" onblur="saveNote('${h.id}', this.value)">${escapeHtml(existingNote)}</textarea>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderWeek() {
+  const grid = document.getElementById('weekGrid');
+  if (state.habits.length === 0) { grid.innerHTML = ''; return; }
+  const days = [];
+  for (let i = 6; i >= 0; i--) days.push(-i);
+  const dayLabels = days.map(offset => {
+    const d = new Date(); d.setDate(d.getDate() + offset);
+    return d.toLocaleDateString('en-US', { weekday: 'narrow' });
+  });
+  let html = `<div class="week-grid"><div class="head"></div>`;
+  dayLabels.forEach(l => html += `<div class="head">${l}</div>`);
+  state.habits.forEach(h => {
+    html += `<div class="hname">${escapeHtml(h.name)}</div>`;
+    days.forEach(offset => {
+      const on = !!state.logs[h.id + ':' + todayStr(offset)];
+      const isToday = offset === 0;
+      html += `<div class="dot ${on ? 'on' : ''} ${isToday ? 'today' : ''}"></div>`;
+    });
+  });
+  html += `</div>`;
+  grid.innerHTML = html;
+}
+
+function renderMonth() {
+  const titleEl = document.getElementById('monthTitle');
+  const grid = document.getElementById('monthGrid');
+  const now = new Date();
+  titleEl.textContent = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  if (state.habits.length === 0) { grid.innerHTML = ''; return; }
+
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startWeekday = firstDay.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayDate = now.getDate();
+
+  const dows = ['S','M','T','W','T','F','S'];
+  let html = `<div class="month-grid">`;
+  dows.forEach(d => html += `<div class="dow">${d}</div>`);
+  for (let i = 0; i < startWeekday; i++) html += `<div class="cell blank"></div>`;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isFuture = day > todayDate;
+    const isToday = day === todayDate;
+    if (isFuture) { html += `<div class="cell future">${day}</div>`; continue; }
+    const doneCount = state.habits.filter(h => state.logs[h.id + ':' + dateStr]).length;
+    const ratio = state.habits.length ? doneCount / state.habits.length : 0;
+    let level = 'l0';
+    if (ratio >= 1) level = 'l4';
+    else if (ratio >= 0.67) level = 'l3';
+    else if (ratio >= 0.34) level = 'l2';
+    else if (ratio > 0) level = 'l1';
+    html += `<div class="cell ${level} ${isToday ? 'today-cell' : ''}" title="${dateStr}: ${doneCount}/${state.habits.length}">${day}</div>`;
+  }
+  html += `</div>`;
+  html += `<div class="legend">Less <div class="cell l0"></div><div class="cell l1"></div><div class="cell l2"></div><div class="cell l3"></div><div class="cell l4"></div> More</div>`;
+  grid.innerHTML = html;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function setupReminder() {
+  const sw = document.getElementById('reminderSwitch');
+  const timeInput = document.getElementById('reminderTime');
+  const hint = document.getElementById('reminderHint');
+
+  timeInput.value = state.reminder.time || '20:00';
+  updateReminderUI();
+
+  sw.addEventListener('click', async () => {
+    if (!state.reminder.enabled) {
+      if (!('Notification' in window)) {
+        hint.textContent = 'This browser does not support notifications.';
+        return;
+      }
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') {
+        hint.textContent = 'Notification permission was not granted, so reminders are off.';
+        return;
+      }
+    }
+    state.reminder.enabled = !state.reminder.enabled;
+    saveState();
+    updateReminderUI();
+  });
+
+  timeInput.addEventListener('change', () => {
+    state.reminder.time = timeInput.value;
+    saveState();
+    updateReminderUI();
+  });
+
+  if (reminderCheckInterval) clearInterval(reminderCheckInterval);
+  reminderCheckInterval = setInterval(checkReminder, 30000);
+}
+
+function updateReminderUI() {
+  const sw = document.getElementById('reminderSwitch');
+  const hint = document.getElementById('reminderHint');
+  sw.classList.toggle('on', !!state.reminder.enabled);
+  hint.textContent = state.reminder.enabled
+    ? `On, set for ${state.reminder.time}. Fires while this app is open in the foreground or background tab.`
+    : 'Off. Turning this on will ask your browser for notification permission — reminders only fire while this tab or app is open.';
+}
+
+function checkReminder() {
+  if (!state.reminder.enabled) return;
+  const now = new Date();
+  const current = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const today = todayStr(0);
+  if (current === state.reminder.time && state.reminder.lastFired !== today) {
+    const total = state.habits.length;
+    const done = state.habits.filter(h => state.logs[h.id + ':' + today]).length;
+    if (Notification.permission === 'granted') {
+      new Notification('Habit check-in', {
+        body: total ? `${done}/${total} habits done today. Anything left?` : 'Add a habit to start tracking.'
+      });
+    }
+    state.reminder.lastFired = today;
+    saveState();
+  }
+}
+
+document.getElementById('addBtn').addEventListener('click', addHabit);
+document.getElementById('newHabitInput').addEventListener('keydown', e => { if (e.key === 'Enter') addHabit(); });
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed', err));
+  });
+}
+
+loadState();
+</script>
+</body>
+</html>
